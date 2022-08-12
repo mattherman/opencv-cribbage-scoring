@@ -160,8 +160,8 @@ card_suits = []
 card_ranks = []
 matched_cards = []
 root_contours = [contours[idx] for idx in range(len(hierarchy[0])) if hierarchy[0][idx][3] < 0]
-card_contours = [contour for contour in root_contours if contour.size >= 100]
-for contour in card_contours[:]:
+card_contours = sorted(root_contours, key=lambda x: cv.contourArea(x), reverse=True)
+for contour in card_contours[:5]:
     rect = cv.minAreaRect(contour)
     box = cv.boxPoints(rect)
     box = np.int0(box)
