@@ -75,8 +75,6 @@ def matchSuits(card):
 
 print(cv.__version__)
 
-# raw_img = cv.imread("./samples/hand.jpg")
-# raw_img = cv.imread("./samples/rotated_8_spades.jpg")
 raw_img = cv.imread("./samples/rotated_hand.jpg")
 if raw_img is None:
     sys.exit("Could not read the image.")
@@ -118,10 +116,6 @@ for contour in card_contours[:]:
     rotated_card = cv.warpAffine(img, rotation_matrix, (cols, rows))
     rotated_cards.append(rotated_card)
 
-    temp_1 = np.array([box])
-    temp_2 = cv.transform(temp_1, rotation_matrix)
-    temp_3 = np.int0(temp_2)
-    temp_4 = temp_3[0]
     rotated_box = np.int0(cv.transform(np.array([box]), rotation_matrix))[0]
     rotated_box[rotated_box < 0] = 0
     cv.drawContours(rotated_card, [rotated_box], 0, (0,0,255), 5)
@@ -140,7 +134,6 @@ for contour in card_contours[:]:
 
     rotated_cropped_card = rotated_card[min_y:max_y, min_x:max_x]
     rotated_cropped_cards.append(rotated_cropped_card)
-    cv.putText(rotated_cropped_card, str(angle), (100, 100), cv.FONT_HERSHEY_SIMPLEX, 2, (0,0,0), 2, cv.LINE_AA)
 
     matchSuits(rotated_cropped_card)
 
