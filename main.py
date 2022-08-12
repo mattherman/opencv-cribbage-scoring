@@ -85,43 +85,6 @@ def calculateTransformAngle(rect):
 
     return angle
 
-
-print(cv.__version__)
-
-# raw_image = cv.imread("./samples/all_cards.jpg")
-raw_image = cv.imread("./samples/rotated_hand.jpg")
-if raw_image is None:
-    sys.exit("Could not read the image.")
-
-def loadTemplateImage(file):
-    image = cv.imread(file)
-    if image is None:
-        sys.exit("Could not read the image.")
-    gray_image = cv.cvtColor(image, cv.COLOR_BGR2GRAY)
-    return gray_image
-
-suit_images = {
-    Suit.SPADES: loadTemplateImage("./images/spades.jpg"),
-    Suit.HEARTS: loadTemplateImage("./images/hearts.jpg"),
-    Suit.CLUBS:  loadTemplateImage("./images/clubs.jpg"),
-    Suit.DIAMONDS: loadTemplateImage("./images/diamonds.jpg")
-}
-rank_images = {
-    Rank.ACE: loadTemplateImage("./images/ace.jpg"),
-    Rank.TWO: loadTemplateImage("./images/two.jpg"),
-    Rank.THREE: loadTemplateImage("./images/three.jpg"),
-    Rank.FOUR: loadTemplateImage("./images/four.jpg"),
-    Rank.FIVE: loadTemplateImage("./images/five.jpg"),
-    Rank.SIX: loadTemplateImage("./images/six.jpg"),
-    Rank.SEVEN: loadTemplateImage("./images/seven.jpg"),
-    Rank.EIGHT: loadTemplateImage("./images/eight.jpg"),
-    Rank.NINE: loadTemplateImage("./images/nine.jpg"),
-    Rank.TEN: loadTemplateImage("./images/ten.jpg"),
-    Rank.JACK: loadTemplateImage("./images/jack.jpg"),
-    Rank.QUEEN: loadTemplateImage("./images/queen.jpg"),
-    Rank.KING: loadTemplateImage("./images/king.jpg"),
-}
-
 def matchTemplate(name, threshold, image, template_image):
     image_width, image_height = image.shape[0], image.shape[1]
     resized_template_image = cv.resize(template_image, (image_height, image_width), interpolation=cv.INTER_AREA)
@@ -134,87 +97,128 @@ def matchTemplate(name, threshold, image, template_image):
         return True
     return False
 
-def matchSuit(card):
+def matchSuit(card, suit_images):
     for suit in Suit:
         image = suit_images[suit]
         if (matchTemplate(str(suit), 0.8, card, image)):
             return suit
 
-def matchRank(card):
+def matchRank(card, rank_images):
     for rank in Rank:
         image = rank_images[rank]
         if (matchTemplate(str(rank), 0.7, card, image)):
             return rank
 
-showImage("Cribbage Score - Original", raw_image, (1200, 800))
 
-image = squareImage(cv.cvtColor(raw_image, cv.COLOR_BGR2GRAY))
+def main():
+    print(cv.__version__)
 
-_, threshold_image = cv.threshold(image, 127, 255, 0)
-contours, hierarchy = cv.findContours(threshold_image, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
+    # raw_image = cv.imread("./samples/all_cards.jpg")
+    raw_image = cv.imread("./samples/rotated_hand.jpg")
+    if raw_image is None:
+        sys.exit("Could not read the image.")
 
-rotated_cards = []
-rotated_cropped_cards = []
-corners_of_cards = []
-card_suits = []
-card_ranks = []
-matched_cards = []
-root_contours = [contours[idx] for idx in range(len(hierarchy[0])) if hierarchy[0][idx][3] < 0]
-card_contours = sorted(root_contours, key=lambda x: cv.contourArea(x), reverse=True)
-for contour in card_contours[:5]:
-    rect = cv.minAreaRect(contour)
-    box = cv.boxPoints(rect)
-    box = np.int0(box)
-    cv.drawContours(image, [box], 0, (0,255,0), 10)
+    def loadTemplateImage(file):
+        image = cv.imread(file)
+        if image is None:
+            sys.exit("Could not read the image.")
+        gray_image = cv.cvtColor(image, cv.COLOR_BGR2GRAY)
+        return gray_image
 
-    angle = calculateTransformAngle(rect)
+    suit_images = {
+        Suit.SPADES: loadTemplateImage("./images/spades.jpg"),
+        Suit.HEARTS: loadTemplateImage("./images/hearts.jpg"),
+        Suit.CLUBS:  loadTemplateImage("./images/clubs.jpg"),
+        Suit.DIAMONDS: loadTemplateImage("./images/diamonds.jpg")
+    }
+    rank_images = {
+        Rank.ACE: loadTemplateImage("./images/ace.jpg"),
+        Rank.TWO: loadTemplateImage("./images/two.jpg"),
+        Rank.THREE: loadTemplateImage("./images/three.jpg"),
+        Rank.FOUR: loadTemplateImage("./images/four.jpg"),
+        Rank.FIVE: loadTemplateImage("./images/five.jpg"),
+        Rank.SIX: loadTemplateImage("./images/six.jpg"),
+        Rank.SEVEN: loadTemplateImage("./images/seven.jpg"),
+        Rank.EIGHT: loadTemplateImage("./images/eight.jpg"),
+        Rank.NINE: loadTemplateImage("./images/nine.jpg"),
+        Rank.TEN: loadTemplateImage("./images/ten.jpg"),
+        Rank.JACK: loadTemplateImage("./images/jack.jpg"),
+        Rank.QUEEN: loadTemplateImage("./images/queen.jpg"),
+        Rank.KING: loadTemplateImage("./images/king.jpg"),
+    }
+    showImage("Cribbage Score - Original", raw_image, (1200, 800))
 
-    rows, cols = image.shape[0], image.shape[1]
-    rotation_matrix = cv.getRotationMatrix2D((cols / 2, rows / 2), angle, 1)
-    rotated_card = cv.warpAffine(image, rotation_matrix, (cols, rows))
-    rotated_cards.append(rotated_card)
+    image = squareImage(cv.cvtColor(raw_image, cv.COLOR_BGR2GRAY))
 
-    rotated_box = np.int0(cv.transform(np.array([box]), rotation_matrix))[0]
-    rotated_box[rotated_box < 0] = 0
+    _, threshold_image = cv.threshold(image, 127, 255, 0)
+    contours, hierarchy = cv.findContours(threshold_image, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
 
-    point_a = rotated_box[0]
-    point_b = rotated_box[1]
-    point_c = rotated_box[2]
-    point_d = rotated_box[3]
+    rotated_cards = []
+    rotated_cropped_cards = []
+    corners_of_cards = []
+    card_suits = []
+    card_ranks = []
+    matched_cards = []
+    root_contours = [contours[idx] for idx in range(len(hierarchy[0])) if hierarchy[0][idx][3] < 0]
+    card_contours = sorted(root_contours, key=lambda x: cv.contourArea(x), reverse=True)
+    for contour in card_contours[:5]:
+        rect = cv.minAreaRect(contour)
+        box = cv.boxPoints(rect)
+        box = np.int0(box)
+        cv.drawContours(image, [box], 0, (0,255,0), 10)
 
-    min_x = min(point_a[0], point_b[0], point_d[0], point_c[0])
-    max_x = max(point_a[0], point_b[0], point_d[0], point_c[0])
-    min_y = min(point_a[1], point_b[1], point_d[1], point_c[1])
-    max_y = max(point_a[1], point_b[1], point_d[1], point_c[1])
+        angle = calculateTransformAngle(rect)
 
-    rotated_cropped_card = rotated_card[min_y:max_y, min_x:max_x]
-    rotated_cropped_cards.append(rotated_cropped_card)
+        rows, cols = image.shape[0], image.shape[1]
+        rotation_matrix = cv.getRotationMatrix2D((cols / 2, rows / 2), angle, 1)
+        rotated_card = cv.warpAffine(image, rotation_matrix, (cols, rows))
+        rotated_cards.append(rotated_card)
 
-    card_height, card_width = rotated_cropped_card.shape[0], rotated_cropped_card.shape[1]
-    corner_of_card = rotated_cropped_card[0:int(card_height * 0.25), 0:int(card_width * 0.18)]
-    corners_of_cards.append(corner_of_card)
+        rotated_box = np.int0(cv.transform(np.array([box]), rotation_matrix))[0]
+        rotated_box[rotated_box < 0] = 0
 
-    rank_image, suit_image = isolateRankAndSuit(corner_of_card)
+        point_a = rotated_box[0]
+        point_b = rotated_box[1]
+        point_c = rotated_box[2]
+        point_d = rotated_box[3]
 
-    card_suits.append(suit_image)
-    card_ranks.append(rank_image)
+        min_x = min(point_a[0], point_b[0], point_d[0], point_c[0])
+        max_x = max(point_a[0], point_b[0], point_d[0], point_c[0])
+        min_y = min(point_a[1], point_b[1], point_d[1], point_c[1])
+        max_y = max(point_a[1], point_b[1], point_d[1], point_c[1])
 
-    suit = matchSuit(suit_image)
-    rank = matchRank(rank_image)
-    card = (rank, suit)
-    matched_cards.append(card)
+        rotated_cropped_card = rotated_card[min_y:max_y, min_x:max_x]
+        rotated_cropped_cards.append(rotated_cropped_card)
 
-showImage("Cribbage Score - Bounded Contours", image, (1200, 800))
+        card_height, card_width = rotated_cropped_card.shape[0], rotated_cropped_card.shape[1]
+        corner_of_card = rotated_cropped_card[0:int(card_height * 0.25), 0:int(card_width * 0.18)]
+        corners_of_cards.append(corner_of_card)
 
-for index in range(len(rotated_cards)):
-    windowName = "Cribbage Score - Card " + str(index + 1)
-    # showImage(windowName + " (Rotated)", rotated_cards[index])
-    showImage(windowName + " (Rotated + Cropped)", rotated_cropped_cards[index])
-    showImage(windowName + " (Corner)", corners_of_cards[index])
-    # showImage(windowName + " (Suit)", card_suits[index])
-    # showImage(windowName + " (Rank)", card_ranks[index])
+        rank_image, suit_image = isolateRankAndSuit(corner_of_card)
 
-for card in matched_cards:
-    print(card)
+        card_suits.append(suit_image)
+        card_ranks.append(rank_image)
 
-k = cv.waitKey(0)
+        suit = matchSuit(suit_image, suit_images)
+        rank = matchRank(rank_image, rank_images)
+        card = (rank, suit)
+        matched_cards.append(card)
+
+    showImage("Cribbage Score - Bounded Contours", image, (1200, 800))
+
+    for index in range(len(rotated_cards)):
+        windowName = "Cribbage Score - Card " + str(index + 1)
+        # showImage(windowName + " (Rotated)", rotated_cards[index])
+        showImage(windowName + " (Rotated + Cropped)", rotated_cropped_cards[index])
+        showImage(windowName + " (Corner)", corners_of_cards[index])
+        # showImage(windowName + " (Suit)", card_suits[index])
+        # showImage(windowName + " (Rank)", card_ranks[index])
+
+    for card in matched_cards:
+        print(card)
+
+    k = cv.waitKey(0)
+
+
+if __name__ == "__main__":
+    main()
