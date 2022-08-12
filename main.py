@@ -64,17 +64,31 @@ def calculateTransformAngle(rect):
 
     return angle
 
+def matchSuits(card):
+    for suit_img in [spades_img, hearts_img, clubs_img, diamonds_img]:
+        w, h = suit_img.shape[::-1]
+        match_result = cv.matchTemplate(card, suit_img, cv.TM_CCOEFF_NORMED)
+        threshold = 0.8
+        loc = np.where(match_result >= threshold)
+        for pt in zip(*loc[::-1]):
+            cv.rectangle(card, pt, (pt[0] + w, pt[1] + h), (0, 0, 255), 2)
+
 print(cv.__version__)
 
 # raw_img = cv.imread("./samples/hand.jpg")
 # raw_img = cv.imread("./samples/rotated_8_spades.jpg")
 raw_img = cv.imread("./samples/rotated_hand.jpg")
-
-# spades_img = cv.imread("./images/spades.jpg")
-# spades_img = cv.cvtColor(spades_img, cv.COLOR_BGR2GRAY)
-
 if raw_img is None:
     sys.exit("Could not read the image.")
+
+spades_img = cv.imread("./images/spades.jpg")
+spades_img = cv.cvtColor(spades_img, cv.COLOR_BGR2GRAY)
+hearts_img = cv.imread("./images/hearts.jpg")
+hearts_img = cv.cvtColor(hearts_img, cv.COLOR_BGR2GRAY)
+clubs_img = cv.imread("./images/clubs.jpg")
+clubs_img = cv.cvtColor(clubs_img, cv.COLOR_BGR2GRAY)
+diamonds_img = cv.imread("./images/diamonds.jpg")
+diamonds_img = cv.cvtColor(diamonds_img, cv.COLOR_BGR2GRAY)
 
 showImage("Cribbage Score - Original", raw_img)
 
@@ -128,12 +142,7 @@ for contour in card_contours[:]:
     rotated_cropped_cards.append(rotated_cropped_card)
     cv.putText(rotated_cropped_card, str(angle), (100, 100), cv.FONT_HERSHEY_SIMPLEX, 2, (0,0,0), 2, cv.LINE_AA)
 
-    # w, h = spades_img.shape[::-1]
-    # match_result = cv.matchTemplate(card_rotated, spades_img, cv.TM_CCOEFF_NORMED)
-    # threshold = 0.8
-    # loc = np.where(match_result >= threshold)
-    # for pt in zip(*loc[::-1]):
-    #     cv.rectangle(card_rotated, pt, (pt[0] + w, pt[1] + h), (0, 0, 255), 2)
+    matchSuits(rotated_cropped_card)
 
 showImage("Cribbage Score - Bounded Contours", img)
 
