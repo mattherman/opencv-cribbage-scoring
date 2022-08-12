@@ -5,32 +5,38 @@ import numpy as np
 
 from cribbage import Rank, Suit
 
-def showImage(window_name, img):
+def showImage(window_name, image, size=None):
     cv.namedWindow(window_name, cv.WINDOW_KEEPRATIO)
-    cv.imshow(window_name, img)
-    cv.resizeWindow(window_name, 1200, 800)
+    cv.imshow(window_name, image)
+    if size is not None:
+        cv.resizeWindow(window_name, size[0], size[1])
 
-# TODO: This is broken
 def isolateRankAndSuit(card_corner):
-    _, threshold_img = cv.threshold(card_corner, 127, 255, 0)
-    contours, hierarchy = cv.findContours(threshold_img, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE) 
-    root_contours = [contours[idx] for idx in range(len(hierarchy[0])) if hierarchy[0][idx][3] == 0]
-    if (len(root_contours) >= 2):
-        x, y, w, h = cv.boundingRect(root_contours[0])
-        x2, y2, w2, h2 = cv.boundingRect(root_contours[1])
-        return (img[y:y+h, x:x+w], img[y2:y2+h2, x2:x2+w2])
+    _, threshold_image = cv.threshold(card_corner, 180, 255, 0)
+    contours, hierarchy = cv.findContours(threshold_image, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE) 
+    if (len(contours) != 0):
+        root_contours = [contours[idx] for idx in range(len(hierarchy[0])) if hierarchy[0][idx][3] >= 0]
+        root_contours = sorted(root_contours, key=lambda x: cv.contourArea(x), reverse=True)
+        if (len(root_contours) > 1):
+            x, y, w, h = cv.boundingRect(root_contours[0])
+            x2, y2, w2, h2 = cv.boundingRect(root_contours[1])
+            first = card_corner[y:y+h, x:x+w]
+            second = card_corner[y2:y2+h2, x2:x2+w2]
+            if y < y2:
+                return (first, second)
+            else:
+                return (second, first)
     else:
-        return (img, img)
+        return (card_corner, card_corner)
 
-
-def squareImage(img):
-    h, w = img.shape[0], img.shape[1]
+def squareImage(image):
+    h, w = image.shape[0], image.shape[1]
     diff = abs(h - w)
     border_width = int(diff / 2)
     if (h > w):
-        return cv.copyMakeBorder(img, 0, 0, border_width, border_width, cv.BORDER_CONSTANT, value=(0,0,0))
+        return cv.copyMakeBorder(image, 0, 0, border_width, border_width, cv.BORDER_CONSTANT, value=(0,0,0))
     else:
-        return cv.copyMakeBorder(img, border_width, border_width, 0, 0, cv.BORDER_CONSTANT, value=(0,0,0))
+        return cv.copyMakeBorder(image, border_width, border_width, 0, 0, cv.BORDER_CONSTANT, value=(0,0,0))
 
 def distance(pointA, pointB):
     # sqrt((x2-x1)^2 + (y2-y1)^2)
@@ -82,15 +88,17 @@ def calculateTransformAngle(rect):
 
 print(cv.__version__)
 
-raw_img = cv.imread("./samples/rotated_hand.jpg")
-if raw_img is None:
+# raw_image = cv.imread("./samples/all_cards.jpg")
+raw_image = cv.imread("./samples/rotated_hand.jpg")
+if raw_image is None:
     sys.exit("Could not read the image.")
 
 def loadTemplateImage(file):
-    img = cv.imread(file)
-    if img is None:
+    image = cv.imread(file)
+    if image is None:
         sys.exit("Could not read the image.")
-    return cv.cvtColor(img, cv.COLOR_BGR2GRAY)
+    gray_image = cv.cvtColor(image, cv.COLOR_BGR2GRAY)
+    return gray_image
 
 suit_images = {
     Suit.SPADES: loadTemplateImage("./images/spades.jpg"),
@@ -114,9 +122,11 @@ rank_images = {
     Rank.KING: loadTemplateImage("./images/king.jpg"),
 }
 
-def matchTemplate(threshold, image, template_image):
-    w, h = template_image.shape[::-1]
-    match_result = cv.matchTemplate(image, template_image, cv.TM_CCOEFF_NORMED)
+def matchTemplate(name, threshold, image, template_image):
+    image_width, image_height = image.shape[0], image.shape[1]
+    resized_template_image = cv.resize(template_image, (image_height, image_width), interpolation=cv.INTER_AREA)
+    w, h = resized_template_image.shape[::-1]
+    match_result = cv.matchTemplate(image, resized_template_image, cv.TM_CCOEFF_NORMED)
     loc = np.where(match_result >= threshold)
     if (loc[0].size != 0 and loc[1].size != 0):
         for pt in zip(*loc[::-1]):
@@ -127,22 +137,21 @@ def matchTemplate(threshold, image, template_image):
 def matchSuit(card):
     for suit in Suit:
         image = suit_images[suit]
-        if (matchTemplate(0.8, card, image)):
+        if (matchTemplate(str(suit), 0.8, card, image)):
             return suit
 
 def matchRank(card):
     for rank in Rank:
         image = rank_images[rank]
-        if (matchTemplate(0.7, card, image)):
+        if (matchTemplate(str(rank), 0.7, card, image)):
             return rank
 
-showImage("Cribbage Score - Original", raw_img)
+showImage("Cribbage Score - Original", raw_image, (1200, 800))
 
-img = squareImage(cv.cvtColor(raw_img, cv.COLOR_BGR2GRAY))
-showImage("Cribbage Score - Original (Grayscale + Expanded)", img)
+image = squareImage(cv.cvtColor(raw_image, cv.COLOR_BGR2GRAY))
 
-_, threshold_img = cv.threshold(img, 127, 255, 0)
-contours, hierarchy = cv.findContours(threshold_img, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
+_, threshold_image = cv.threshold(image, 127, 255, 0)
+contours, hierarchy = cv.findContours(threshold_image, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
 
 rotated_cards = []
 rotated_cropped_cards = []
@@ -152,25 +161,21 @@ card_ranks = []
 matched_cards = []
 root_contours = [contours[idx] for idx in range(len(hierarchy[0])) if hierarchy[0][idx][3] < 0]
 card_contours = [contour for contour in root_contours if contour.size >= 100]
-# alternative: contours.sort(key=cv2.contourArea, reverse=true) ?
 for contour in card_contours[:]:
     rect = cv.minAreaRect(contour)
     box = cv.boxPoints(rect)
     box = np.int0(box)
-    cv.drawContours(img, [box], 0, (0,0,255), 5)
+    cv.drawContours(image, [box], 0, (0,255,0), 10)
 
     angle = calculateTransformAngle(rect)
 
-    rows, cols = img.shape[0], img.shape[1]
+    rows, cols = image.shape[0], image.shape[1]
     rotation_matrix = cv.getRotationMatrix2D((cols / 2, rows / 2), angle, 1)
-    rotated_card = cv.warpAffine(img, rotation_matrix, (cols, rows))
+    rotated_card = cv.warpAffine(image, rotation_matrix, (cols, rows))
     rotated_cards.append(rotated_card)
 
     rotated_box = np.int0(cv.transform(np.array([box]), rotation_matrix))[0]
     rotated_box[rotated_box < 0] = 0
-    cv.drawContours(rotated_card, [rotated_box], 0, (0,0,255), 5)
-
-    # np.sort(rotated_box)
 
     point_a = rotated_box[0]
     point_b = rotated_box[1]
@@ -186,26 +191,24 @@ for contour in card_contours[:]:
     rotated_cropped_cards.append(rotated_cropped_card)
 
     card_height, card_width = rotated_cropped_card.shape[0], rotated_cropped_card.shape[1]
-    corner_of_card = rotated_cropped_card[15:int(card_height * 0.25), 15:int(card_width * 0.18)]
+    corner_of_card = rotated_cropped_card[0:int(card_height * 0.25), 0:int(card_width * 0.18)]
     corners_of_cards.append(corner_of_card)
 
-    rank_img, suit_img = isolateRankAndSuit(corner_of_card)
+    rank_image, suit_image = isolateRankAndSuit(corner_of_card)
 
-    # corner_height, _ = corner_of_card.shape[0], corner_of_card[1]
-    # split_point = int(corner_height * 0.6)
-    card_suits.append(suit_img)
-    card_ranks.append(rank_img)
+    card_suits.append(suit_image)
+    card_ranks.append(rank_image)
 
-    # suit = matchSuit(corner_of_card)
-    # rank = matchRank(corner_of_card)
-    # card = (rank, suit)
-    # matched_cards.append(card)
+    suit = matchSuit(suit_image)
+    rank = matchRank(rank_image)
+    card = (rank, suit)
+    matched_cards.append(card)
 
-showImage("Cribbage Score - Bounded Contours", img)
+showImage("Cribbage Score - Bounded Contours", image, (1200, 800))
 
 for index in range(len(rotated_cards)):
     windowName = "Cribbage Score - Card " + str(index + 1)
-    showImage(windowName + " (Rotated)", rotated_cards[index])
+    # showImage(windowName + " (Rotated)", rotated_cards[index])
     showImage(windowName + " (Rotated + Cropped)", rotated_cropped_cards[index])
     showImage(windowName + " (Corner)", corners_of_cards[index])
     # showImage(windowName + " (Suit)", card_suits[index])
