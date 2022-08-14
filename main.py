@@ -113,8 +113,13 @@ def matchRank(card, rank_images):
 def main():
     print(cv.__version__)
 
-    # raw_image = cv.imread("./samples/all_cards.jpg")
-    raw_image = cv.imread("./samples/rotated_hand.jpg")
+    if len(sys.argv) < 2:
+        sys.exit("You must provide an image file.")
+
+    image_file = sys.argv[1]
+    debug = "--debug" in sys.argv
+
+    raw_image = cv.imread(image_file)
     if raw_image is None:
         sys.exit("Could not read the image.")
 
@@ -204,15 +209,16 @@ def main():
         card = (rank, suit)
         matched_cards.append(card)
 
-    showImage("Cribbage Score - Bounded Contours", image, (1200, 800))
+    if debug:
+        showImage("Cribbage Score - Bounded Contours", image, (1200, 800))
 
-    for index in range(len(rotated_cards)):
-        windowName = "Cribbage Score - Card " + str(index + 1)
-        # showImage(windowName + " (Rotated)", rotated_cards[index])
-        showImage(windowName + " (Rotated + Cropped)", rotated_cropped_cards[index])
-        showImage(windowName + " (Corner)", corners_of_cards[index])
-        # showImage(windowName + " (Suit)", card_suits[index])
-        # showImage(windowName + " (Rank)", card_ranks[index])
+        for index in range(len(rotated_cards)):
+            windowName = "Cribbage Score - Card " + str(index + 1)
+            showImage(windowName + " (Rotated)", rotated_cards[index], (1200, 800))
+            showImage(windowName + " (Rotated + Cropped)", rotated_cropped_cards[index], (600, 400))
+            showImage(windowName + " (Corner)", corners_of_cards[index])
+            showImage(windowName + " (Suit)", card_suits[index])
+            showImage(windowName + " (Rank)", card_ranks[index])
 
     for card in matched_cards:
         print(card)
