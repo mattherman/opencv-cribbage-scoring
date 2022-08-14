@@ -11,23 +11,12 @@ def showImage(window_name, image, size=None):
     if size is not None:
         cv.resizeWindow(window_name, size[0], size[1])
 
-def isolateRankAndSuit(card_corner):
-    _, threshold_image = cv.threshold(card_corner, 180, 255, 0)
-    contours, hierarchy = cv.findContours(threshold_image, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE) 
-    if (len(contours) != 0):
-        root_contours = [contours[idx] for idx in range(len(hierarchy[0])) if hierarchy[0][idx][3] >= 0]
-        root_contours = sorted(root_contours, key=lambda x: cv.contourArea(x), reverse=True)
-        if (len(root_contours) > 1):
-            x, y, w, h = cv.boundingRect(root_contours[0])
-            x2, y2, w2, h2 = cv.boundingRect(root_contours[1])
-            first = card_corner[y:y+h, x:x+w]
-            second = card_corner[y2:y2+h2, x2:x2+w2]
-            if y < y2:
-                return (first, second)
-            else:
-                return (second, first)
-    else:
-        return (card_corner, card_corner)
+def loadTemplateImage(file):
+    image = cv.imread(file)
+    if image is None:
+        sys.exit("Could not read the image.")
+    gray_image = cv.cvtColor(image, cv.COLOR_BGR2GRAY)
+    return gray_image
 
 def squareImage(image):
     h, w = image.shape[0], image.shape[1]
@@ -85,6 +74,24 @@ def calculateTransformAngle(rect):
 
     return angle
 
+def isolateRankAndSuit(card_corner):
+    _, threshold_image = cv.threshold(card_corner, 180, 255, 0)
+    contours, hierarchy = cv.findContours(threshold_image, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE) 
+    if (len(contours) != 0):
+        root_contours = [contours[idx] for idx in range(len(hierarchy[0])) if hierarchy[0][idx][3] >= 0]
+        root_contours = sorted(root_contours, key=lambda x: cv.contourArea(x), reverse=True)
+        if (len(root_contours) > 1):
+            x, y, w, h = cv.boundingRect(root_contours[0])
+            x2, y2, w2, h2 = cv.boundingRect(root_contours[1])
+            first = card_corner[y:y+h, x:x+w]
+            second = card_corner[y2:y2+h2, x2:x2+w2]
+            if y < y2:
+                return (first, second)
+            else:
+                return (second, first)
+    else:
+        return (card_corner, card_corner)
+
 def matchTemplate(name, threshold, image, template_image):
     image_width, image_height = image.shape[0], image.shape[1]
     resized_template_image = cv.resize(template_image, (image_height, image_width), interpolation=cv.INTER_AREA)
@@ -122,13 +129,6 @@ def main():
     raw_image = cv.imread(image_file)
     if raw_image is None:
         sys.exit("Could not read the image.")
-
-    def loadTemplateImage(file):
-        image = cv.imread(file)
-        if image is None:
-            sys.exit("Could not read the image.")
-        gray_image = cv.cvtColor(image, cv.COLOR_BGR2GRAY)
-        return gray_image
 
     suit_images = {
         Suit.SPADES: loadTemplateImage("./images/spades.jpg"),
