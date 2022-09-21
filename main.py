@@ -223,6 +223,7 @@ def main():
     for card in matched_cards:
         print(card)
 
+    
     k = cv.waitKey(0)
 
 
